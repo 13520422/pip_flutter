@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.LongSparseArray
+import android.util.Rational
 import com.example.pip_flutter.PipFlutterPlayerCache.releaseCache
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -192,7 +193,16 @@ class PipFlutterPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                 result.success(null)
             }
             ENABLE_PICTURE_IN_PICTURE_METHOD -> {
-                enablePictureInPicture(player)
+                var width:Double= call.argument(WIDTH_PARAMETER)?:0.0
+                var height:Double= call.argument(HEIGHT_PARAMETER)?:0.0
+                var  rational: Rational?=null
+                if(width!=0.0 && height!=0.0){
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        rational=Rational(width.toInt(),height.toInt())
+                    }
+                }
+
+                enablePictureInPicture(player,rational)
                 result.success(null)
             }
             DISABLE_PICTURE_IN_PICTURE_METHOD -> {
@@ -408,10 +418,15 @@ class PipFlutterPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
             .hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
     }
 
-    private fun enablePictureInPicture(player: PipFlutterPlayer) {
+    private fun enablePictureInPicture(player: PipFlutterPlayer,rational:Rational?) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             player.setupMediaSession(flutterState!!.applicationContext, true)
-            activity!!.enterPictureInPictureMode(PictureInPictureParams.Builder().build())
+            if(rational!=null){
+                PictureInPictureParams.Builder().setAspectRatio(rational).build()
+            }else{
+                PictureInPictureParams.Builder().build()
+            }
+            activity!!.enterPictureInPictureMode()
             startPictureInPictureListenerTimer(player)
             player.onPictureInPictureStatusChanged(true)
         }

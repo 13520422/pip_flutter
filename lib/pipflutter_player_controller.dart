@@ -999,7 +999,7 @@ class PipFlutterPlayerController {
       if (Platform.isAndroid) {
         _wasInFullScreenBeforePiP = _isFullScreen;
         await videoPlayerController?.enablePictureInPicture(
-            left: top ?? 0, top: left ?? 0, width: width ?? 0, height: width ?? 0);
+            left: left ?? 0, top: top ?? 0, width: width ?? 0, height: height ?? 0);
         enterFullScreen();
         _postEvent(PipFlutterPlayerEvent(PipFlutterPlayerEventType.pipStart));
         return;

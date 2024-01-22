@@ -178,8 +178,13 @@ class _VideoPlayerState extends State<VideoPlayer> with WidgetsBindingObserver {
         initDelegate();
         break;
       case PipFlutterPlayerEventType.pipStop:
-        // autoPlay();
+        // print("PipFlutterPlayerEventType.pipStop");
         widget.onPIPChange?.call(false);
+        if (_appLifecycleState == AppLifecycleState.resumed) {
+          autoPlay();
+        } else {
+          pause();
+        }
         break;
       case PipFlutterPlayerEventType.pipStart:
         widget.onPIPChange?.call(true);
@@ -204,17 +209,34 @@ class _VideoPlayerState extends State<VideoPlayer> with WidgetsBindingObserver {
     widget.runPIP?.call(onRunPIP);
     widget.runStopPIP?.call(runStopPIP);
     widget.setAutoPIP?.call(controller?.setAutoPIP);
-    widget.refresh?.call(controller!.videoPlayerController!.refresh);
+    widget.refresh?.call(refresh);
     widget.onCreated?.call(controller);
     controller!.videoPlayerController?.removeListener(_initListenVideo);
     controller!.videoPlayerController?.addListener(_initListenVideo);
   }
 
+  refresh() {
+    controller?.videoPlayerController?.refresh();
+    if (widget.isLiveStream) {
+      controller?.seekTo(Duration(seconds: controller?.videoPlayerController?.value.duration?.inSeconds ?? 0));
+    }
+  }
+
   autoPlay() {
     try {
       if (widget.isAutoPlay) {
-        controller?.play();
+        if (controller?.videoPlayerController?.value.isPlaying != true) {
+          controller?.play();
+        }
       }
+    } catch (e) {
+      //do nothing
+    }
+  }
+
+  pause() {
+    try {
+      controller?.pause();
     } catch (e) {
       //do nothing
     }
@@ -273,8 +295,10 @@ class _VideoPlayerState extends State<VideoPlayer> with WidgetsBindingObserver {
     }
   }
 
+  AppLifecycleState? _appLifecycleState;
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appLifecycleState = state;
     if (state == AppLifecycleState.resumed) {
       //do your stuff
       stopIfPipExit();
@@ -282,13 +306,14 @@ class _VideoPlayerState extends State<VideoPlayer> with WidgetsBindingObserver {
   }
 
   stopIfPipExit() async {
-    Future.delayed(const Duration(milliseconds: 1000), () {
+    await Future.delayed(const Duration(milliseconds: 1000), () {
       if (controller?.videoPlayerController?.value.isPip ?? false) {
         if (Platform.isIOS) {
           runStopPIP();
         }
       }
     });
+    autoPlay();
   }
 
   void _onDispose() {

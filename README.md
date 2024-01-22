@@ -52,6 +52,24 @@ app is not in background that time app not kill and running in foregorund and al
     <service
            android:name=".PipFlutterPlayerService"
            android:stopWithTask="false" />
+///file MainActivity.kt
+...
+import com.concung.pip_flutter.PipFlutterPlugin
+import android.content.res.Configuration
+
+class MainActivity: FlutterActivity() {
+    ...
+   override fun onUserLeaveHint() {
+        PipFlutterPlugin.instance?.onUserLeaveHint(true)
+        super.onUserLeaveHint()
+    }
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean, newConfig: Configuration?) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        PipFlutterPlugin.instance?.onPictureInPictureModeChanged(isInPictureInPictureMode)
+    }
+    ...
+
 ```
 ##  IOS
 

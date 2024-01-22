@@ -15,6 +15,7 @@ CacheManager* _cacheManager;
 int texturesCount = -1;
 PipFlutter* _notificationPlayer;
 bool _remoteCommandsInitialized = false;
+bool pictureInPictureAutomatically = true;
 
 
 #pragma mark - FlutterPlugin protocol
@@ -288,6 +289,13 @@ bool _remoteCommandsInitialized = false;
     } else if ([@"create" isEqualToString:call.method]) {
         PipFlutter* player = [[PipFlutter alloc] initWithFrame:CGRectZero];
         [self onPlayerSetup:player result:result];
+    }else if ([@"setAutomaticPIP" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        pictureInPictureAutomatically = [argsMap[@"isAuto"] boolValue];
+        int64_t textureId = ((NSNumber*)argsMap[@"textureId"]).unsignedIntegerValue;
+        PipFlutter* player = _players[@(textureId)];
+        [player setPictureInPictureAutomatically:pictureInPictureAutomatically];
+        result(nil);
     } else {
         NSDictionary* argsMap = call.arguments;
         int64_t textureId = ((NSNumber*)argsMap[@"textureId"]).unsignedIntegerValue;
@@ -341,6 +349,16 @@ bool _remoteCommandsInitialized = false;
                 result(FlutterMethodNotImplemented);
             }
             result(nil);
+            NSTimeInterval delayInSeconds = 2.0;
+            dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delayInSeconds * NSEC_PER_SEC));
+            dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
+              NSLog(@"Do initPictureInPicture");
+                if(pictureInPictureAutomatically){
+                    [player initPictureInPicture];
+                }
+              
+            });
+            
         } else if ([@"dispose" isEqualToString:call.method]) {
             [player clear];
             [self disposeNotificationData:player];
@@ -412,7 +430,6 @@ bool _remoteCommandsInitialized = false;
             result([NSNumber numberWithBool:false]);
         } else if ([@"disablePictureInPicture" isEqualToString:call.method]){
             [player disablePictureInPicture];
-            [player setPictureInPicture:false];
         } else if ([@"setAudioTrack" isEqualToString:call.method]){
             NSString* name = argsMap[@"name"];
             int index = [argsMap[@"index"] intValue];
@@ -463,7 +480,7 @@ bool _remoteCommandsInitialized = false;
                 }
             }
             result(nil);
-        } else {
+        }else {
             result(FlutterMethodNotImplemented);
         }
     }

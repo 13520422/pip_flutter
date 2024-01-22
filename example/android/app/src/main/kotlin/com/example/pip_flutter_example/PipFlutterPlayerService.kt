@@ -1,4 +1,4 @@
-package com.example.pip_flutter_example
+package com.concung.pip_flutter_example
 
 import android.app.*
 import android.content.Context

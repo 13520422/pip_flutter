@@ -7,6 +7,7 @@ enum PipFlutterPlayerEventType {
   openFullscreen,
   hideFullscreen,
   setVolume,
+  setAutoPIP,
   progress,
   finished,
   exception,

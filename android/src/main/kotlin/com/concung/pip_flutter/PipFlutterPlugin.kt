@@ -1,16 +1,22 @@
-package com.example.pip_flutter
+package com.concung.pip_flutter
 
 import android.app.Activity
 import android.app.PictureInPictureParams
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.graphics.Point
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.LongSparseArray
 import android.util.Rational
-import com.example.pip_flutter.PipFlutterPlayerCache.releaseCache
+import android.view.WindowManager
+import androidx.core.util.isEmpty
+import androidx.core.util.isNotEmpty
+import com.concung.pip_flutter.PipFlutterPlayerCache.releaseCache
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
@@ -22,8 +28,9 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.view.TextureRegistry
-import java.lang.Exception
+import org.jetbrains.annotations.Contract
 import java.util.HashMap
+import kotlin.Exception
 
 /**
  * Android platform implementation of the VideoPlayerPlugin.
@@ -35,8 +42,9 @@ class PipFlutterPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     private var currentNotificationTextureId: Long = -1
     private var currentNotificationDataSource: Map<String, Any?>? = null
     private var activity: Activity? = null
-    private var pipHandler: Handler? = null
-    private var pipRunnable: Runnable? = null
+//    private var pipHandler: Handler? = null
+//    private var pipRunnable: Runnable? = null
+    private var textureIdPlayer:MutableList<Long> =  mutableListOf<Long>()
 
     override fun onAttachedToEngine(binding: FlutterPluginBinding) {
         Log.e("CALLMETHOD", "onAttachedToEngine: ")
@@ -90,11 +98,13 @@ class PipFlutterPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         }
         videoPlayers.clear()
         dataSources.clear()
+        textureIdPlayer.clear()
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        Log.e("CALLMETHOD", "onMethodCall: call.method --> "+call.method)
-        Log.e("CALLMETHOD", "onMethodCall: result --> "+result)
+
+//        Log.e("CALLMETHOD", "onMethodCall: call.method --> "+call.method)
+//        Log.e("CALLMETHOD", "onMethodCall: result --> "+result)
         if (flutterState == null || flutterState!!.textureRegistry == null) {
             result.error("no_activity", "pipflutter_player plugin requires a foreground activity", null)
             return
@@ -102,6 +112,7 @@ class PipFlutterPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         when (call.method) {
             INIT_METHOD -> disposeAllPlayers()
             CREATE_METHOD -> {
+                ////
                 val handle = flutterState!!.textureRegistry!!.createSurfaceTexture()
                 val eventChannel = EventChannel(
                     flutterState!!.binaryMessenger, EVENTS_CHANNEL + handle.id()
@@ -123,10 +134,13 @@ class PipFlutterPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                     customDefaultLoadControl, result
                 )
                 videoPlayers.put(handle.id(), player)
+                textureIdPlayer.add(handle.id())
+                instance=this
             }
             PRE_CACHE_METHOD -> preCache(call, result)
             STOP_PRE_CACHE_METHOD -> stopPreCache(call, result)
             CLEAR_CACHE_METHOD -> clearCache(result)
+            SET_AUTOMATIC_PIP_METHOD ->  setAutomaticPIP(call, result)
             else -> {
                 val textureId = (call.argument<Any>(TEXTURE_ID_PARAMETER) as Number?)!!.toLong()
                 val player = videoPlayers[textureId]
@@ -193,14 +207,16 @@ class PipFlutterPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                 result.success(null)
             }
             ENABLE_PICTURE_IN_PICTURE_METHOD -> {
-                var width:Double= call.argument(WIDTH_PARAMETER)?:0.0
-                var height:Double= call.argument(HEIGHT_PARAMETER)?:0.0
-                var  rational: Rational?=null
-                if(width!=0.0 && height!=0.0){
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        rational=Rational(width.toInt(),height.toInt())
-                    }
-                }
+//                var width:Double= call.argument(WIDTH_PARAMETER)?:0.0
+//                var height:Double= call.argument(HEIGHT_PARAMETER)?:0.0
+//                var  rational: Rational?=null
+//                if(width!=0.0 && height!=0.0){
+//                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+//                        rational=Rational(width.toInt(),height.toInt())
+//                    }
+//                }
+
+                var rational= getDeviceSize(activity);
 
                 enablePictureInPicture(player,rational)
                 result.success(null)
@@ -235,7 +251,11 @@ class PipFlutterPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
             else -> result.notImplemented()
         }
     }
-
+    fun  setAutomaticPIP( call: MethodCall,
+                          result: MethodChannel.Result,){
+        pictureInPictureAutomatically=call.argument(AUTOMATIC_PIP_PARAMETER)!!
+        result.success(null)
+    }
     private fun setDataSource(
         call: MethodCall,
         result: MethodChannel.Result,
@@ -418,15 +438,20 @@ class PipFlutterPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
             .hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
     }
 
-    private fun enablePictureInPicture(player: PipFlutterPlayer,rational:Rational?) {
+     fun enablePictureInPicture(player: PipFlutterPlayer,rational:Rational?) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            player.setupMediaSession(flutterState!!.applicationContext, true)
+//            player.setupMediaSession(flutterState!!.applicationContext, true)
             if(rational!=null){
-                PictureInPictureParams.Builder().setAspectRatio(rational).build()
+                activity!!.enterPictureInPictureMode(
+                        PictureInPictureParams.Builder()
+                                .setAspectRatio(rational)
+                                .build())
             }else{
-                PictureInPictureParams.Builder().build()
+                activity!!.enterPictureInPictureMode(
+                        PictureInPictureParams.Builder()
+                        .build())
             }
-            activity!!.enterPictureInPictureMode()
+
             startPictureInPictureListenerTimer(player)
             player.onPictureInPictureStatusChanged(true)
         }
@@ -440,34 +465,132 @@ class PipFlutterPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     }
 
     private fun startPictureInPictureListenerTimer(player: PipFlutterPlayer) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            pipHandler = Handler(Looper.getMainLooper())
-            pipRunnable = Runnable {
-                if (activity!!.isInPictureInPictureMode) {
-                    pipHandler!!.postDelayed(pipRunnable!!, 100)
-                } else {
-                    player.onPictureInPictureStatusChanged(false)
-                    player.disposeMediaSession()
-                    stopPipHandler()
-                }
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+//            pipHandler = Handler(Looper.getMainLooper())
+//            if(pipHandler!=null){
+//                stopPipHandler()
+//            }
+//            pipRunnable = Runnable {
+//                if (activity!!.isInPictureInPictureMode) {
+//                    pipHandler!!.postDelayed(pipRunnable!!, 100)
+//                } else {
+//                    player.onPictureInPictureStatusChanged(false)
+//                    player.disposeMediaSession()
+//                    stopPipHandler()
+//                }
+//            }
+//            if(pipHandler!=null){
+//                pipHandler!!.post(pipRunnable!!)
+//            }
+//
+//        }
+    }
+
+    ///TODO: Call this method via channel after remote notification start
+     fun startNotificationService() {
+        try {
+            PipFlutterPlayerService.activity=activity
+            val intent = Intent(activity!!, PipFlutterPlayerService::class.java)
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
+              activity!!.startForegroundService(intent)
+            } else {
+                activity!!.startService(intent)
             }
-            pipHandler!!.post(pipRunnable!!)
+        } catch (exception: Exception) {
         }
     }
+
+    ///TODO: Call this method via channel after remote notification stop
+     fun stopNotificationService() {
+        try {
+            val intent = Intent(activity!!, PipFlutterPlayerService::class.java)
+            activity!!.stopService(intent)
+        } catch (exception: Exception) {
+
+        }
+    }
+
+    fun getDeviceSize(context: Context?): Rational? {
+        var width = 0
+        var height = 0
+        var wm: WindowManager? = null
+        context?.let {
+            wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            val display = wm!!.defaultDisplay
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
+                val size = Point()
+                display.getSize(size)
+                width = size.x
+                height = size.y
+            } else {
+                width = display.width // deprecated
+                height = display.height // deprecated
+            }
+
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            return Rational(width, height)
+        }
+        return null
+    }
+    fun onUserLeaveHint(isRequestPIP:Boolean):Boolean {
+        if (pictureInPictureAutomatically && isPictureInPictureSupported()){
+            if(videoPlayers.isNotEmpty()){
+                for (textureId in textureIdPlayer){
+//                    var textureId=textureIdPlayer.last()
+                    var currentPlayer=  videoPlayers[textureId]
+                    ///
+                    if(currentPlayer.exoPlayer?.isPlaying == true){
+                        if(isRequestPIP){
+                            var  rational= getDeviceSize(activity)
+                            enablePictureInPicture(currentPlayer,rational)
+                        }
+                        return true
+                    }
+                }
+
+
+            }
+        }
+        return false
+    }
+
+    fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean){
+        for (textureId in textureIdPlayer){
+//                    var textureId=textureIdPlayer.last()
+            var currentPlayer=  videoPlayers[textureId]
+            ///
+            if(currentPlayer.exoPlayer?.isPlaying == true){
+                if(isInPictureInPictureMode){
+                    currentPlayer.onPictureInPictureStatusChanged(true)
+                }else{
+                    currentPlayer.onPictureInPictureStatusChanged(false)
+                }
+                return
+            }
+        }
+
+    }
+
+
 
     private fun dispose(player: PipFlutterPlayer, textureId: Long) {
         player.dispose()
         videoPlayers.remove(textureId)
         dataSources.remove(textureId)
         stopPipHandler()
+        textureIdPlayer.remove(textureId)
+        if(videoPlayers.isEmpty()){
+            instance=null
+        }
     }
 
     private fun stopPipHandler() {
-        if (pipHandler != null) {
-            pipHandler!!.removeCallbacksAndMessages(null)
-            pipHandler = null
-        }
-        pipRunnable = null
+//        if (pipHandler != null) {
+//            pipHandler!!.removeCallbacksAndMessages(null)
+//            pipHandler = null
+//        }
+//        pipRunnable = null
     }
 
     private interface KeyForAssetFn {
@@ -511,6 +634,7 @@ class PipFlutterPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         private const val FORMAT_HINT_PARAMETER = "formatHint"
         private const val TEXTURE_ID_PARAMETER = "textureId"
         private const val LOOPING_PARAMETER = "looping"
+        private const val AUTOMATIC_PIP_PARAMETER = "isAuto"
         private const val VOLUME_PARAMETER = "volume"
         private const val LOCATION_PARAMETER = "location"
         private const val SPEED_PARAMETER = "speed"
@@ -562,5 +686,12 @@ class PipFlutterPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         private const val DISPOSE_METHOD = "dispose"
         private const val PRE_CACHE_METHOD = "preCache"
         private const val STOP_PRE_CACHE_METHOD = "stopPreCache"
+        private const val SET_AUTOMATIC_PIP_METHOD = "setAutomaticPIP"
+
+        @get:Contract(pure = true)
+        var instance: PipFlutterPlugin? = null
+            private set
+        var pictureInPictureAutomatically: Boolean = true
+            private set
     }
 }

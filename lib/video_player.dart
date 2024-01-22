@@ -29,6 +29,8 @@ class VideoPlayerValue {
     this.speed = 1.0,
     this.errorDescription,
     this.isPip = false,
+    this.isBufferUpdate = false,
+    this.isBufferEnd = false,
   });
 
   /// Returns an instance with a `null` [Duration].
@@ -36,8 +38,7 @@ class VideoPlayerValue {
 
   /// Returns an instance with a `null` [Duration] and the given
   /// [errorDescription].
-  VideoPlayerValue.erroneous(String errorDescription)
-      : this(duration: null, errorDescription: errorDescription);
+  VideoPlayerValue.erroneous(String errorDescription) : this(duration: null, errorDescription: errorDescription);
 
   /// The total duration of the video.
   ///
@@ -63,6 +64,12 @@ class VideoPlayerValue {
 
   /// True if the video is currently buffering.
   final bool isBuffering;
+
+  /// True if the video is currently buffer update.
+  final bool isBufferUpdate;
+
+  /// True if the video is currently buffer end.
+  final bool isBufferEnd;
 
   /// The current volume of the playback.
   final double volume;
@@ -118,6 +125,8 @@ class VideoPlayerValue {
     String? errorDescription,
     double? speed,
     bool? isPip,
+    bool? isBufferUpdate,
+    bool? isBufferEnd,
   }) {
     return VideoPlayerValue(
       duration: duration ?? this.duration,
@@ -132,6 +141,8 @@ class VideoPlayerValue {
       speed: speed ?? this.speed,
       errorDescription: errorDescription ?? this.errorDescription,
       isPip: isPip ?? this.isPip,
+      isBufferUpdate: isBufferUpdate ?? this.isBufferUpdate,
+      isBufferEnd: isBufferEnd ?? this.isBufferEnd,
     );
   }
 
@@ -148,6 +159,7 @@ class VideoPlayerValue {
         'isLooping: $isLooping, '
         'isBuffering: $isBuffering, '
         'volume: $volume, '
+        'isPip: $isPip, '
         'errorDescription: $errorDescription)';
   }
 }
@@ -167,20 +179,19 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
 
   /// Constructs a [VideoPlayerController] and creates video controller on platform side.
   VideoPlayerController({
-    this.bufferingConfiguration =
-        const PipFlutterPlayerBufferingConfiguration(),
+    this.bufferingConfiguration = const PipFlutterPlayerBufferingConfiguration(),
     bool autoCreate = true,
+    this.automaticPIP = true,
   }) : super(VideoPlayerValue(duration: null)) {
     if (autoCreate) {
       _create();
     }
   }
 
-  final StreamController<VideoEvent> videoEventStreamController =
-      StreamController.broadcast();
+  final StreamController<VideoEvent> videoEventStreamController = StreamController.broadcast();
   final Completer<void> _creatingCompleter = Completer<void>();
   int? _textureId;
-
+  bool? automaticPIP;
   Timer? _timer;
   bool _isDisposed = false;
   late Completer<void> _initializingCompleter;
@@ -199,6 +210,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     _textureId = await _videoPlayerPlatform.create(
       bufferingConfiguration: bufferingConfiguration,
     );
+    setAutoPIP(automaticPIP ?? true);
     _creatingCompleter.complete(null);
 
     unawaited(_applyLooping());
@@ -223,15 +235,13 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           _timer?.cancel();
           break;
         case VideoEventType.bufferingUpdate:
-          value = value.copyWith(buffered: event.buffered);
+          value = value.copyWith(buffered: event.buffered, isBufferUpdate: true);
           break;
         case VideoEventType.bufferingStart:
           value = value.copyWith(isBuffering: true);
           break;
         case VideoEventType.bufferingEnd:
-          if (value.isBuffering) {
-            value = value.copyWith(isBuffering: false);
-          }
+          value = value.copyWith(isBufferEnd: true, isBuffering: false, isBufferUpdate: true);
           break;
 
         case VideoEventType.play:
@@ -267,9 +277,12 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       }
     }
 
-    _eventSubscription = _videoPlayerPlatform
-        .videoEventsFor(_textureId)
-        .listen(eventListener, onError: errorListener);
+    _eventSubscription = _videoPlayerPlatform.videoEventsFor(_textureId).listen(eventListener, onError: errorListener);
+  }
+
+  Future<void> setAutoPIP(bool isAuto) async {
+    automaticPIP = isAuto;
+    await _videoPlayerPlatform.setAutomaticPIP(isAuto, textureId);
   }
 
   /// Set data source for playing a video from an asset.
@@ -402,8 +415,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
 
     _initializingCompleter = Completer<void>();
 
-    await VideoPlayerPlatform.instance
-        .setDataSource(_textureId, dataSourceDescription);
+    await VideoPlayerPlatform.instance.setDataSource(_textureId, dataSourceDescription);
     return _initializingCompleter.future;
   }
 
@@ -473,8 +485,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           }
           _updatePosition(newPosition, absolutePosition: newAbsolutePosition);
           if (_seekPosition != null && newPosition != null) {
-            final difference =
-                newPosition.inMilliseconds - _seekPosition!.inMilliseconds;
+            final difference = newPosition.inMilliseconds - _seekPosition!.inMilliseconds;
             if (difference > 0) {
               _seekPosition = null;
             }
@@ -582,14 +593,11 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   /// [height] specifies height of the selected track
   /// [bitrate] specifies bitrate of the selected track
   Future<void> setTrackParameters(int? width, int? height, int? bitrate) async {
-    await _videoPlayerPlatform.setTrackParameters(
-        _textureId, width, height, bitrate);
+    await _videoPlayerPlatform.setTrackParameters(_textureId, width, height, bitrate);
   }
 
-  Future<void> enablePictureInPicture(
-      {double? top, double? left, double? width, double? height}) async {
-    await _videoPlayerPlatform.enablePictureInPicture(
-        textureId, top, left, width, height);
+  Future<void> enablePictureInPicture({double? top, double? left, double? width, double? height}) async {
+    await _videoPlayerPlatform.enablePictureInPicture(textureId, top, left, width, height);
   }
 
   Future<void> disablePictureInPicture() async {
@@ -688,9 +696,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    return _textureId == null
-        ? Container()
-        : _videoPlayerPlatform.buildView(_textureId);
+    return _textureId == null ? Container() : _videoPlayerPlatform.buildView(_textureId);
   }
 }
 

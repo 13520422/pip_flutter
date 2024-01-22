@@ -29,8 +29,7 @@ class PipFlutterPlayerCupertinoControls extends StatefulWidget {
   }
 }
 
-class _PipFlutterPlayerCupertinoControlsState
-    extends PipFlutterPlayerControlsState<PipFlutterPlayerCupertinoControls> {
+class _PipFlutterPlayerCupertinoControlsState extends PipFlutterPlayerControlsState<PipFlutterPlayerCupertinoControls> {
   final marginSize = 5.0;
   VideoPlayerValue? _latestValue;
   double? _latestVolume;
@@ -43,19 +42,16 @@ class _PipFlutterPlayerCupertinoControlsState
   PipFlutterPlayerController? _pipFlutterPlayerController;
   StreamSubscription? _controlsVisibilityStreamSubscription;
 
-  PipFlutterPlayerControlsConfiguration get _controlsConfiguration =>
-      widget.controlsConfiguration;
+  PipFlutterPlayerControlsConfiguration get _controlsConfiguration => widget.controlsConfiguration;
 
   @override
   VideoPlayerValue? get latestValue => _latestValue;
 
   @override
-  PipFlutterPlayerController? get pipFlutterPlayerController =>
-      _pipFlutterPlayerController;
+  PipFlutterPlayerController? get pipFlutterPlayerController => _pipFlutterPlayerController;
 
   @override
-  PipFlutterPlayerControlsConfiguration
-      get pipFlutterPlayerControlsConfiguration => _controlsConfiguration;
+  PipFlutterPlayerControlsConfiguration get pipFlutterPlayerControlsConfiguration => _controlsConfiguration;
 
   @override
   Widget build(BuildContext context) {
@@ -92,10 +88,7 @@ class _PipFlutterPlayerCupertinoControlsState
         barHeight,
         buttonPadding,
       ),
-      if (_wasLoading)
-        Expanded(child: Center(child: _buildLoadingWidget()))
-      else
-        _buildHitArea(),
+      if (_wasLoading) Expanded(child: Center(child: _buildLoadingWidget())) else _buildHitArea(),
       _buildNextVideoWidget(),
       _buildBottomBar(
         backgroundColor,
@@ -108,30 +101,22 @@ class _PipFlutterPlayerCupertinoControlsState
         if (PipFlutterPlayerMultipleGestureDetector.of(context) != null) {
           PipFlutterPlayerMultipleGestureDetector.of(context)!.onTap?.call();
         }
-        controlsNotVisible
-            ? cancelAndRestartTimer()
-            : changePlayerControlsNotVisible(true);
+        controlsNotVisible ? cancelAndRestartTimer() : changePlayerControlsNotVisible(true);
       },
       onDoubleTap: () {
         if (PipFlutterPlayerMultipleGestureDetector.of(context) != null) {
-          PipFlutterPlayerMultipleGestureDetector.of(context)!
-              .onDoubleTap
-              ?.call();
+          PipFlutterPlayerMultipleGestureDetector.of(context)!.onDoubleTap?.call();
         }
         cancelAndRestartTimer();
         _onPlayPause();
       },
       onLongPress: () {
         if (PipFlutterPlayerMultipleGestureDetector.of(context) != null) {
-          PipFlutterPlayerMultipleGestureDetector.of(context)!
-              .onLongPress
-              ?.call();
+          PipFlutterPlayerMultipleGestureDetector.of(context)!.onLongPress?.call();
         }
       },
       child: AbsorbPointer(
-          absorbing: controlsNotVisible,
-          child:
-              isFullScreen ? SafeArea(child: controlsColumn) : controlsColumn),
+          absorbing: controlsNotVisible, child: isFullScreen ? SafeArea(child: controlsColumn) : controlsColumn),
     );
   }
 
@@ -186,18 +171,19 @@ class _PipFlutterPlayerCupertinoControlsState
               color: backgroundColor,
             ),
             child: _pipFlutterPlayerController!.isLiveStream()
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: <Widget>[
-                      const SizedBox(width: 8),
-                      if (_controlsConfiguration.enablePlayPause)
-                        _buildPlayPause(_controller!, iconColor, barHeight)
-                      else
-                        const SizedBox(),
-                      const SizedBox(width: 8),
-                      _buildLiveWidget(),
-                    ],
-                  )
+                ? SizedBox.shrink()
+                // Row(
+                //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                //     children: <Widget>[
+                //       const SizedBox(width: 8),
+                //       if (_controlsConfiguration.enablePlayPause)
+                //         _buildPlayPause(_controller!, iconColor, barHeight)
+                //       else
+                //         const SizedBox(),
+                //       const SizedBox(width: 8),
+                //       _buildLiveWidget(),
+                //     ],
+                //   )
                 : Row(
                     children: <Widget>[
                       if (_controlsConfiguration.enableSkips)
@@ -212,18 +198,9 @@ class _PipFlutterPlayerCupertinoControlsState
                         _buildSkipForward(iconColor, barHeight)
                       else
                         const SizedBox(),
-                      if (_controlsConfiguration.enableProgressText)
-                        _buildPosition()
-                      else
-                        const SizedBox(),
-                      if (_controlsConfiguration.enableProgressBar)
-                        _buildProgressBar()
-                      else
-                        const SizedBox(),
-                      if (_controlsConfiguration.enableProgressText)
-                        _buildRemaining()
-                      else
-                        const SizedBox()
+                      if (_controlsConfiguration.enableProgressText) _buildPosition() else const SizedBox(),
+                      if (_controlsConfiguration.enableProgressBar) _buildProgressBar() else const SizedBox(),
+                      if (_controlsConfiguration.enableProgressText) _buildRemaining() else const SizedBox()
                     ],
                   ),
           ),
@@ -236,9 +213,7 @@ class _PipFlutterPlayerCupertinoControlsState
     return Expanded(
       child: Text(
         _pipFlutterPlayerController!.translations.controlsLive,
-        style: TextStyle(
-            color: _controlsConfiguration.liveTextColor,
-            fontWeight: FontWeight.bold),
+        style: TextStyle(color: _controlsConfiguration.liveTextColor, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -398,9 +373,7 @@ class _PipFlutterPlayerCupertinoControlsState
         color: Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 6),
         child: Icon(
-          controller.value.isPlaying
-              ? _controlsConfiguration.pauseIcon
-              : _controlsConfiguration.playIcon,
+          controller.value.isPlaying ? _controlsConfiguration.pauseIcon : _controlsConfiguration.playIcon,
           color: iconColor,
           size: barHeight * 0.6,
         ),
@@ -409,8 +382,7 @@ class _PipFlutterPlayerCupertinoControlsState
   }
 
   Widget _buildPosition() {
-    final position =
-        _latestValue != null ? _latestValue!.position : const Duration();
+    final position = _latestValue != null ? _latestValue!.position : const Duration();
 
     return Padding(
       padding: const EdgeInsets.only(right: 12.0),
@@ -433,8 +405,7 @@ class _PipFlutterPlayerCupertinoControlsState
       padding: const EdgeInsets.only(right: 12.0),
       child: Text(
         '-${PipFlutterPlayerUtils.formatDuration(position)}',
-        style:
-            TextStyle(color: _controlsConfiguration.textColor, fontSize: 12.0),
+        style: TextStyle(color: _controlsConfiguration.textColor, fontSize: 12.0),
       ),
     );
   }
@@ -596,8 +567,7 @@ class _PipFlutterPlayerCupertinoControlsState
 
     _updateState();
 
-    if ((_controller!.value.isPlaying) ||
-        _pipFlutterPlayerController!.pipFlutterPlayerConfiguration.autoPlay) {
+    if ((_controller!.value.isPlaying) || _pipFlutterPlayerController!.pipFlutterPlayerConfiguration.autoPlay) {
       _startHideTimer();
     }
 
@@ -606,8 +576,7 @@ class _PipFlutterPlayerCupertinoControlsState
         changePlayerControlsNotVisible(false);
       });
     }
-    _controlsVisibilityStreamSubscription =
-        _pipFlutterPlayerController!.controlsVisibilityStream.listen((state) {
+    _controlsVisibilityStreamSubscription = _pipFlutterPlayerController!.controlsVisibilityStream.listen((state) {
       changePlayerControlsNotVisible(!state);
 
       if (!controlsNotVisible) {
@@ -646,8 +615,7 @@ class _PipFlutterPlayerCupertinoControlsState
               playedColor: _controlsConfiguration.progressBarPlayedColor,
               handleColor: _controlsConfiguration.progressBarHandleColor,
               bufferedColor: _controlsConfiguration.progressBarBufferedColor,
-              backgroundColor:
-                  _controlsConfiguration.progressBarBackgroundColor),
+              backgroundColor: _controlsConfiguration.progressBarBackgroundColor),
         ),
       ),
     );
@@ -668,9 +636,7 @@ class _PipFlutterPlayerCupertinoControlsState
       cancelAndRestartTimer();
 
       if (!_controller!.value.initialized) {
-        if (_pipFlutterPlayerController!
-                .pipFlutterPlayerDataSource?.liveStream ==
-            true) {
+        if (_pipFlutterPlayerController!.pipFlutterPlayerDataSource?.liveStream == true) {
           _pipFlutterPlayerController!.play();
           _pipFlutterPlayerController!.cancelNextVideoTimer();
         }
@@ -695,10 +661,7 @@ class _PipFlutterPlayerCupertinoControlsState
 
   void _updateState() {
     if (mounted) {
-      if (!controlsNotVisible ||
-          isVideoFinished(_controller!.value) ||
-          _wasLoading ||
-          isLoading(_controller!.value)) {
+      if (!controlsNotVisible || isVideoFinished(_controller!.value) || _wasLoading || isLoading(_controller!.value)) {
         setState(() {
           _latestValue = _controller!.value;
           if (isVideoFinished(_latestValue)) {
@@ -715,13 +678,9 @@ class _PipFlutterPlayerCupertinoControlsState
   }
 
   Widget _buildErrorWidget() {
-    final errorBuilder =
-        _pipFlutterPlayerController!.pipFlutterPlayerConfiguration.errorBuilder;
+    final errorBuilder = _pipFlutterPlayerController!.pipFlutterPlayerConfiguration.errorBuilder;
     if (errorBuilder != null) {
-      return errorBuilder(
-          context,
-          _pipFlutterPlayerController!
-              .videoPlayerController!.value.errorDescription);
+      return errorBuilder(context, _pipFlutterPlayerController!.videoPlayerController!.value.errorDescription);
     } else {
       final textStyle = TextStyle(color: _controlsConfiguration.textColor);
       return Center(
@@ -759,8 +718,7 @@ class _PipFlutterPlayerCupertinoControlsState
     }
 
     return CircularProgressIndicator(
-      valueColor:
-          AlwaysStoppedAnimation<Color>(_controlsConfiguration.loadingColor),
+      valueColor: AlwaysStoppedAnimation<Color>(_controlsConfiguration.loadingColor),
     );
   }
 
@@ -775,12 +733,11 @@ class _PipFlutterPlayerCupertinoControlsState
       future: _pipFlutterPlayerController!.isPictureInPictureSupported(),
       builder: (context, snapshot) {
         final isPipSupported = snapshot.data ?? false;
-        if (isPipSupported &&
-            _pipFlutterPlayerController!.pipFlutterPlayerGlobalKey != null) {
+        if (isPipSupported && _pipFlutterPlayerController!.pipFlutterPlayerGlobalKey != null) {
           return GestureDetector(
             onTap: () {
-              pipFlutterPlayerController!.enablePictureInPicture(
-                  pipFlutterPlayerController!.pipFlutterPlayerGlobalKey!);
+              pipFlutterPlayerController!
+                  .enablePictureInPicture(pipFlutterPlayerController!.pipFlutterPlayerGlobalKey!);
             },
             child: AnimatedOpacity(
               opacity: controlsNotVisible ? 0.0 : 1.0,

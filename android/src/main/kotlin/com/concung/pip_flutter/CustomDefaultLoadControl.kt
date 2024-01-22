@@ -1,8 +1,8 @@
-package com.example.pip_flutter
+package com.concung.pip_flutter
 
 import com.google.android.exoplayer2.DefaultLoadControl
 
-internal class CustomDefaultLoadControl {
+public class CustomDefaultLoadControl {
     /**
      * The default minimum duration of media that the player will attempt to ensure is buffered
      * at all times, in milliseconds.

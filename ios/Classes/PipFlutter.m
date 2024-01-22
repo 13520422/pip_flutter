@@ -10,6 +10,7 @@ static void* playbackBufferFullContext = &playbackBufferFullContext;
 static void* presentationSizeContext = &presentationSizeContext;
 
 
+bool pictureInPictureAutomatic= true;
 #if TARGET_OS_IOS
 void (^__strong _Nonnull _restoreUserInterfaceForPIPStopCompletionHandler)(BOOL);
 API_AVAILABLE(ios(9.0))
@@ -30,8 +31,10 @@ AVPictureInPictureController *_pipController;
         _player.automaticallyWaitsToMinimizeStalling = false;
     }
     self._observersAdded = false;
+    ///
     return self;
 }
+
 
 - (nonnull UIView *)view {
     PipFlutterView *playerView = [[PipFlutterView alloc] initWithFrame:CGRectZero];
@@ -149,6 +152,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     // If in portrait mode, switch the width and height of the video
     CGFloat width = videoTrack.naturalSize.width;
     CGFloat height = videoTrack.naturalSize.height;
+    NSLog(@"getVideoCompositionWithTransform :width %f height %f", width,height);
     NSInteger rotationDegrees =
     (NSInteger)round(radiansToDegrees(atan2(_preferredTransform.b, _preferredTransform.a)));
     if (rotationDegrees == 90 || rotationDegrees == 270) {
@@ -219,6 +223,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
             dispatch_queue_t streamQueue = dispatch_queue_create("streamQueue", qos);
             [asset.resourceLoader setDelegate:_loaderDelegate queue:streamQueue];
         }
+        
         item = [AVPlayerItem playerItemWithAsset:asset];
     }
 
@@ -227,7 +232,6 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     }
     return [self setDataSourcePlayerItem:item withKey:key];
 }
-
 - (void)setDataSourcePlayerItem:(AVPlayerItem*)item withKey:(NSString*)key{
     _key = key;
     _stalledCount = 0;
@@ -245,6 +249,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                     if (self->_disposed) return;
                     if ([videoTrack statusOfValueForKey:@"preferredTransform"
                                                   error:nil] == AVKeyValueStatusLoaded) {
+
                         // Rotate the video by using a videoComposition and the preferredTransform
                         self->_preferredTransform = [self fixTransform:videoTrack];
                         // Note:
@@ -258,6 +263,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                         item.videoComposition = videoComposition;
                     }
                 };
+                
                 [videoTrack loadValuesAsynchronouslyForKeys:@[ @"preferredTransform" ]
                                           completionHandler:trackCompletionHandler];
             }
@@ -315,22 +321,30 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                       ofObject:(id)object
                         change:(NSDictionary*)change
                        context:(void*)context {
-
+//    NSLog(@"observeValueForKeyPath:%@",path);
     if ([path isEqualToString:@"rate"]) {
+        if (_player.rate == 0 && //if player rate dropped to 0
+            CMTIME_COMPARE_INLINE(_player.currentItem.currentTime, >, kCMTimeZero) && //if video was started
+            CMTIME_COMPARE_INLINE(_player.currentItem.currentTime, <, _player.currentItem.duration) && //but not yet finished
+            _isPlaying) { //instance variable to handle overall state (changed to YES when user triggers playback)
+            [self handleStalled];
+        }
+        
         if (@available(iOS 10.0, *)) {
             if (_pipController.pictureInPictureActive == true){
+                
                 if (_lastAvPlayerTimeControlStatus != [NSNull null] && _lastAvPlayerTimeControlStatus == _player.timeControlStatus){
                     return;
                 }
-
-                if (_player.timeControlStatus == AVPlayerTimeControlStatusPaused){
-                    _lastAvPlayerTimeControlStatus = _player.timeControlStatus;
-                    if (_eventSink != nil) {
-                      _eventSink(@{@"event" : @"pause"});
-                    }
-                    return;
-
-                }
+                [self play];
+//                if (_player.timeControlStatus == AVPlayerTimeControlStatusPaused){
+//                    _lastAvPlayerTimeControlStatus = _player.timeControlStatus;
+//                    if (_eventSink != nil) {
+//                      _eventSink(@{@"event" : @"pause"});
+//                    }
+//                    return;
+//
+//                }
                 if (_player.timeControlStatus == AVPlayerTimeControlStatusPlaying){
                     _lastAvPlayerTimeControlStatus = _player.timeControlStatus;
                     if (_eventSink != nil) {
@@ -338,13 +352,6 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                     }
                 }
             }
-        }
-
-        if (_player.rate == 0 && //if player rate dropped to 0
-            CMTIME_COMPARE_INLINE(_player.currentItem.currentTime, >, kCMTimeZero) && //if video was started
-            CMTIME_COMPARE_INLINE(_player.currentItem.currentTime, <, _player.currentItem.duration) && //but not yet finished
-            _isPlaying) { //instance variable to handle overall state (changed to YES when user triggers playback)
-            [self handleStalled];
         }
     }
 
@@ -408,27 +415,39 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
             _eventSink(@{@"event" : @"bufferingEnd", @"key" : _key});
         }
     }
+    
 }
 
 - (void)updatePlayingState {
     if (!_isInitialized || !_key) {
         return;
     }
+    if (_pipController && !self._pictureInPicture && [_pipController isPictureInPictureActive]) {
+        return;
+    }
+    if(!_player){
+        return;
+    }
     if (!self._observersAdded){
         [self addObservers:[_player currentItem]];
     }
-
-    if (_isPlaying) {
-        if (@available(iOS 10.0, *)) {
-            [_player playImmediatelyAtRate:1.0];
-            _player.rate = _playerRate;
+    @try{
+        if (_isPlaying) {
+            if (@available(iOS 10.0, *)) {
+                [_player playImmediatelyAtRate:1.0];
+                _player.rate = _playerRate;
+            } else {
+                [_player play];
+                _player.rate = _playerRate;
+            }
         } else {
-            [_player play];
-            _player.rate = _playerRate;
+            [_player pause];
         }
-    } else {
-        [_player pause];
     }
+    @catch(NSException *exception) {
+        NSLog(exception.debugDescription);
+    }
+    
 }
 
 - (void)onReadyToPlay {
@@ -468,7 +487,9 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         if (_overriddenDuration > 0 && duration > _overriddenDuration){
             _player.currentItem.forwardPlaybackEndTime = CMTimeMake(_overriddenDuration/1000, 1);
         }
-
+//        videoEventsFor  {height: 854.0, key: https://livecdn3.concung.com/vod/20231222/cci_live_1703285304/1703285304/E62B903A4E0038379B026DD8135DE32F/manifest.m3u8:hls, event: initialized, width: 480.0, duration: 5795600}
+//        2024-01-10 09:49:52.768062+0700 EC_SCM[889:117663]
+//        414.0 height: 896.0
         _isInitialized = true;
         [self updatePlayingState];
         _eventSink(@{
@@ -479,6 +500,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
             @"key" : _key
         });
     }
+    
 }
 
 - (void)play {
@@ -585,13 +607,13 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 {
     self._pictureInPicture = pictureInPicture;
     if (@available(iOS 9.0, *)) {
-        if (_pipController && self._pictureInPicture && ![_pipController isPictureInPictureActive]) {
+        if (pictureInPicture && _pipController && self._pictureInPicture && ![_pipController isPictureInPictureActive]) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                [_pipController startPictureInPicture];
+               [_pipController startPictureInPicture];
             });
         } else if (_pipController && !self._pictureInPicture && [_pipController isPictureInPictureActive]) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                [_pipController stopPictureInPicture];
+               [_pipController stopPictureInPicture];
             });
         } else {
             // Fallback on earlier versions
@@ -612,12 +634,84 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         [[AVAudioSession sharedInstance] setActive: YES error: nil];
         [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
         if (!_pipController && self._playerLayer && [AVPictureInPictureController isPictureInPictureSupported]) {
+            
+//            _pipController = [[AVPictureInPictureController alloc] initWithPlayerLayer:self._playerLayer];
             _pipController = [[AVPictureInPictureController alloc] initWithPlayerLayer:self._playerLayer];
+            if (@available(iOS 14.2, *)) {
+                _pipController.canStartPictureInPictureAutomaticallyFromInline = pictureInPictureAutomatic;
+            } else {
+                // Fallback on earlier versions
+            }
             _pipController.delegate = self;
+            [_pipController setValue:[NSNumber numberWithInt:1] forKey:@"requiresLinearPlayback"];
+            [_pipController setValue:[NSNumber numberWithInt:1] forKey:@"controlsStyle"];
+            
         }
     } else {
         // Fallback on earlier versions
     }
+}
+
+- (UIViewController *)viewController{
+  return [self topViewController:[UIApplication sharedApplication].keyWindow.rootViewController];
+}
+
+- (UIViewController *)topViewController:(UIViewController *)rootViewController
+{
+  if ([rootViewController isKindOfClass:[UINavigationController class]]) {
+    UINavigationController *navigationController = (UINavigationController *)rootViewController;
+    return [self topViewController:[navigationController.viewControllers lastObject]];
+  }
+  if ([rootViewController isKindOfClass:[UITabBarController class]]) {
+    UITabBarController *tabController = (UITabBarController *)rootViewController;
+    return [self topViewController:tabController.selectedViewController];
+  }
+  if (rootViewController.presentedViewController) {
+    return [self topViewController:rootViewController];
+  }
+  return rootViewController;
+}
+
+- (void)setPictureInPictureAutomatically:(BOOL)isAuto{
+    pictureInPictureAutomatic=isAuto;
+    if(_pipController != NULL){
+        if (@available(iOS 14.2, *)) {
+            _pipController.canStartPictureInPictureAutomaticallyFromInline = pictureInPictureAutomatic;
+            if (__playerLayer){
+                [self._playerLayer removeFromSuperlayer];
+                self._playerLayer = NULL;
+            }
+        } else {
+            // Fallback on earlier versions
+        }
+    }
+}
+CGColorRef CreateTransparentCGColor(CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha) {
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    CGFloat components[4] = {red, green, blue, alpha};
+    CGColorRef color = CGColorCreate(colorSpace, components);
+    CGColorSpaceRelease(colorSpace);
+    return color;
+}
+- (void) initPictureInPicture {
+    if (__playerLayer){
+        [self._playerLayer removeFromSuperlayer];
+        self._playerLayer = NULL;
+    }
+    self._playerLayer = [AVPlayerLayer playerLayerWithPlayer:_player];
+    UIViewController* vc = [self viewController];
+    self._playerLayer.frame= vc.view.bounds;
+    self._playerLayer.needsDisplayOnBoundsChange = YES;
+    self._playerLayer.backgroundColor = CreateTransparentCGColor(0.0, 0.0, 0.0, 0.0);
+    self._playerLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
+    self._playerLayer.opacity = 0;
+//    self._playerLayer.contentsScale = 2;
+    [vc.view.layer addSublayer:self._playerLayer];
+    vc.view.layer.needsDisplayOnBoundsChange = YES;
+    if (@available(iOS 9.0, *)) {
+        _pipController=NULL;
+    }
+    [self setupPipController];
 }
 
 - (void) enablePictureInPicture: (CGRect) frame{
@@ -629,18 +723,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 {
     if( _player )
     {
-        // Create new controller passing reference to the AVPlayerLayer
-        self._playerLayer = [AVPlayerLayer playerLayerWithPlayer:_player];
-        UIViewController* vc = [[[UIApplication sharedApplication] keyWindow] rootViewController];
-        self._playerLayer.frame = frame;
-        self._playerLayer.needsDisplayOnBoundsChange = YES;
-        //  [self._playerLayer addObserver:self forKeyPath:readyForDisplayKeyPath options:NSKeyValueObservingOptionNew context:nil];
-        [vc.view.layer addSublayer:self._playerLayer];
-        vc.view.layer.needsDisplayOnBoundsChange = YES;
-        if (@available(iOS 9.0, *)) {
-            _pipController = NULL;
-        }
-        [self setupPipController];
+        [self initPictureInPicture];
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)),
                        dispatch_get_main_queue(), ^{
             [self setPictureInPicture:true];
@@ -650,34 +733,59 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 
 - (void)disablePictureInPicture
 {
-    [self setPictureInPicture:true];
+    [self setPictureInPicture:false];
     if (__playerLayer){
         [self._playerLayer removeFromSuperlayer];
         self._playerLayer = nil;
-        if (_eventSink != nil) {
-            _eventSink(@{@"event" : @"pipStop"});
-        }
+    }
+    if (_eventSink != nil) {
+        _eventSink(@{@"event" : @"pipStop"});
+    }
+    
+}
+
+- (void)disposePictureInPicture
+{
+    if (_eventSink != nil) {
+        _eventSink(@{@"event" : @"pipStop"});
+    }
+    [self disablePictureInPicture];
+    if (__playerLayer){
+        [self._playerLayer removeFromSuperlayer];
+        self._playerLayer = nil;
     }
 }
 #endif
 
 #if TARGET_OS_IOS
 - (void)pictureInPictureControllerDidStopPictureInPicture:(AVPictureInPictureController *)pictureInPictureController  API_AVAILABLE(ios(9.0)){
-    [self disablePictureInPicture];
+    [self setPictureInPicture:false];
+    [self play];
+    [self initPictureInPicture];
+    if (_eventSink != nil) {
+        _eventSink(@{@"event" : @"pipStop"});
+    }
 }
+
 
 - (void)pictureInPictureControllerDidStartPictureInPicture:(AVPictureInPictureController *)pictureInPictureController  API_AVAILABLE(ios(9.0)){
     if (_eventSink != nil) {
         _eventSink(@{@"event" : @"pipStart"});
     }
+    
 }
 
 - (void)pictureInPictureControllerWillStopPictureInPicture:(AVPictureInPictureController *)pictureInPictureController  API_AVAILABLE(ios(9.0)){
-
+    
+    if (_eventSink != nil) {
+        _eventSink(@{@"event" : @"pipStop1"});
+    }
 }
 
 - (void)pictureInPictureControllerWillStartPictureInPicture:(AVPictureInPictureController *)pictureInPictureController {
-
+//    if (_eventSink != nil) {
+//        _eventSink(@{@"event" : @"pipStart"});
+//    }
 }
 
 - (void)pictureInPictureController:(AVPictureInPictureController *)pictureInPictureController failedToStartPictureInPictureWithError:(NSError *)error {
@@ -685,6 +793,8 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 }
 
 - (void)pictureInPictureController:(AVPictureInPictureController *)pictureInPictureController restoreUserInterfaceForPictureInPictureStopWithCompletionHandler:(void (^)(BOOL))completionHandler {
+    // Add a fade-out animation when exiting PiP mode
+    completionHandler(YES);
     [self setRestoreUserInterfaceForPIPStopCompletionHandler: true];
 }
 
@@ -753,8 +863,9 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     [self pause];
     [self disposeSansEventChannel];
     [_eventChannel setStreamHandler:nil];
-    [self disablePictureInPicture];
+    [self disposePictureInPicture];
     [self setPictureInPicture:false];
+    _pipController = NULL;
     _disposed = true;
 }
 

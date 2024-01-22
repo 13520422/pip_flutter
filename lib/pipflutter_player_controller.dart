@@ -38,6 +38,7 @@ class PipFlutterPlayerController {
   static const String _speedParameter = "speed";
   static const String _dataSourceParameter = "dataSource";
   static const String _authorizationHeader = "Authorization";
+  static const String _autoPIPParameter = "isAuto";
 
   ///General configuration used in controller instance.
   final PipFlutterPlayerConfiguration pipFlutterPlayerConfiguration;
@@ -238,8 +239,10 @@ class PipFlutterPlayerController {
 
     ///Build videoPlayerController if null
     if (videoPlayerController == null) {
-      videoPlayerController =
-          VideoPlayerController(bufferingConfiguration: pipFlutterPlayerDataSource.bufferingConfiguration);
+      videoPlayerController = VideoPlayerController(
+        bufferingConfiguration: pipFlutterPlayerDataSource.bufferingConfiguration,
+        automaticPIP: pipFlutterPlayerConfiguration.autoEnterPIP,
+      );
       videoPlayerController?.addListener(_onVideoPlayerChanged);
     }
 
@@ -305,7 +308,7 @@ class PipFlutterPlayerController {
       /// Load subtitles
       if (pipFlutterPlayerDataSource?.useAsmsSubtitles == true) {
         final List<PipFlutterPlayerAsmsSubtitle> asmsSubtitles = _response.subtitles ?? [];
-        asmsSubtitles.forEach((PipFlutterPlayerAsmsSubtitle asmsSubtitle) {
+        for (var asmsSubtitle in asmsSubtitles) {
           _pipFlutterPlayerSubtitlesSourceList.add(
             PipFlutterPlayerSubtitlesSource(
               type: PipFlutterPlayerSubtitlesSourceType.network,
@@ -317,7 +320,7 @@ class PipFlutterPlayerController {
               selectedByDefault: asmsSubtitle.isDefault,
             ),
           );
-        });
+        }
       }
 
       ///Load audio tracks
@@ -530,7 +533,7 @@ class PipFlutterPlayerController {
 
     final startAt = pipFlutterPlayerConfiguration.startAt;
     if (startAt != null) {
-      seekTo(startAt);
+      await seekTo(startAt);
     }
   }
 
@@ -571,13 +574,13 @@ class PipFlutterPlayerController {
       throw StateError("The data source has not been initialized");
     }
 
-    if (_appLifecycleState == AppLifecycleState.resumed) {
-      await videoPlayerController!.play();
-      _hasCurrentDataSourceStarted = true;
-      _wasPlayingBeforePause = null;
-      _postEvent(PipFlutterPlayerEvent(PipFlutterPlayerEventType.play));
-      _postControllerEvent(PipFlutterPlayerControllerEvent.play);
-    }
+    // if (_appLifecycleState == AppLifecycleState.resumed) {
+    await videoPlayerController?.play();
+    _hasCurrentDataSourceStarted = true;
+    _wasPlayingBeforePause = null;
+    _postEvent(PipFlutterPlayerEvent(PipFlutterPlayerEventType.play));
+    _postControllerEvent(PipFlutterPlayerControllerEvent.play);
+    // }
   }
 
   ///Enables/disables looping (infinity playback) mode.
@@ -608,7 +611,7 @@ class PipFlutterPlayerController {
       throw StateError("The video has not been initialized yet.");
     }
 
-    await videoPlayerController!.seekTo(moment);
+    await videoPlayerController?.seekTo(moment);
 
     _postEvent(PipFlutterPlayerEvent(PipFlutterPlayerEventType.seekTo,
         parameters: <String, dynamic>{_durationParameter: moment}));
@@ -634,10 +637,18 @@ class PipFlutterPlayerController {
       PipFlutterPlayerUtils.log("The data source has not been initialized");
       throw StateError("The data source has not been initialized");
     }
-    await videoPlayerController!.setVolume(volume);
+    await videoPlayerController?.setVolume(volume);
     _postEvent(PipFlutterPlayerEvent(
       PipFlutterPlayerEventType.setVolume,
       parameters: <String, dynamic>{_volumeParameter: volume},
+    ));
+  }
+
+  Future<void> setAutoPIP(bool isAuto) async {
+    await videoPlayerController?.setAutoPIP(isAuto);
+    _postEvent(PipFlutterPlayerEvent(
+      PipFlutterPlayerEventType.setAutoPIP,
+      parameters: <String, dynamic>{_autoPIPParameter: isAuto},
     ));
   }
 
@@ -706,6 +717,7 @@ class PipFlutterPlayerController {
 
   ///Send player event to all listeners.
   void _postEvent(PipFlutterPlayerEvent pipFlutterPlayerEvent) {
+    // print("_postEvent  ${pipFlutterPlayerEvent.pipFlutterPlayerEventType}");
     for (final Function(PipFlutterPlayerEvent)? eventListener in _eventListeners) {
       if (eventListener != null) {
         eventListener(pipFlutterPlayerEvent);
@@ -1000,7 +1012,7 @@ class PipFlutterPlayerController {
         _wasInFullScreenBeforePiP = _isFullScreen;
         await videoPlayerController?.enablePictureInPicture(
             left: left ?? 0, top: top ?? 0, width: width ?? 0, height: height ?? 0);
-        enterFullScreen();
+        // enterFullScreen();
         _postEvent(PipFlutterPlayerEvent(PipFlutterPlayerEventType.pipStart));
         return;
       }
@@ -1087,6 +1099,12 @@ class PipFlutterPlayerController {
         break;
       case VideoEventType.bufferingEnd:
         _postEvent(PipFlutterPlayerEvent(PipFlutterPlayerEventType.bufferingEnd));
+        break;
+      case VideoEventType.pipStart:
+        _postEvent(PipFlutterPlayerEvent(PipFlutterPlayerEventType.pipStart));
+        break;
+      case VideoEventType.pipStop:
+        _postEvent(PipFlutterPlayerEvent(PipFlutterPlayerEventType.pipStop));
         break;
       default:
 
@@ -1181,7 +1199,7 @@ class PipFlutterPlayerController {
   ///Stop pre cache for given [pipFlutterPlayerDataSource]. If there was no pre
   ///cache started for given [pipFlutterPlayerDataSource] then it will be ignored.
   Future<void> stopPreCache(PipFlutterPlayerDataSource pipFlutterPlayerDataSource) async {
-    return VideoPlayerController?.stopPreCache(
+    return VideoPlayerController.stopPreCache(
         pipFlutterPlayerDataSource.url, pipFlutterPlayerDataSource.cacheConfiguration?.key);
   }
 
@@ -1215,7 +1233,9 @@ class PipFlutterPlayerController {
       _controllerEventStreamController.close();
 
       ///Delete files async
-      _tempFiles.forEach((file) => file.delete());
+      for (var file in _tempFiles) {
+        file.delete();
+      }
     }
   }
 }

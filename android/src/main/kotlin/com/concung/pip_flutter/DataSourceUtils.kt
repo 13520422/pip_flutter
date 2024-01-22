@@ -1,4 +1,4 @@
-package com.example.pip_flutter
+package com.concung.pip_flutter
 
 import android.net.Uri
 import com.google.android.exoplayer2.upstream.DataSource

@@ -92,7 +92,7 @@ class PipFlutterPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
 
     override fun onDetachedFromActivity() {}
 
-    private fun disposeAllPlayers() {
+    fun disposeAllPlayers() {
         for (i in 0 until videoPlayers.size()) {
             videoPlayers.valueAt(i).dispose()
         }

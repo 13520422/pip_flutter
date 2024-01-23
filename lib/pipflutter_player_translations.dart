@@ -16,11 +16,11 @@ class PipFlutterPlayerTranslations {
 
   PipFlutterPlayerTranslations(
       {this.languageCode = "en",
-      this.generalDefaultError = "Video can't be played",
+      this.generalDefaultError = "", // "Video can't be played",
       this.generalNone = "None",
-      this.generalDefault = "Default",
-      this.generalRetry = "Retry",
-      this.playlistLoadingNextVideo = "Loading next video",
+      this.generalDefault = "Mặc định",
+      this.generalRetry = "", //"Retry",
+      this.playlistLoadingNextVideo = "Tải video tiếp theo",
       this.controlsLive = "LIVE",
       this.controlsNextVideoIn = "Next video in",
       this.overflowMenuPlaybackSpeed = "Playback speed",
@@ -44,8 +44,7 @@ class PipFlutterPlayerTranslations {
         qualityAuto: "Automatycznie",
       );
 
-  factory PipFlutterPlayerTranslations.chinese() =>
-      PipFlutterPlayerTranslations(
+  factory PipFlutterPlayerTranslations.chinese() => PipFlutterPlayerTranslations(
         languageCode: "zh",
         generalDefaultError: "无法播放视频",
         generalNone: "没有",
@@ -93,24 +92,22 @@ class PipFlutterPlayerTranslations {
         qualityAuto: "ऑटो",
       );
 
-  factory PipFlutterPlayerTranslations.turkish() =>
-      PipFlutterPlayerTranslations(
-          languageCode: "tr",
-          generalDefaultError: "Video oynatılamıyor",
-          generalNone: "Hiçbiri",
-          generalDefault: "Varsayılan",
-          generalRetry: "Tekrar Dene",
-          playlistLoadingNextVideo: "Sonraki video yükleniyor",
-          controlsLive: "CANLI",
-          controlsNextVideoIn: "Sonraki video oynatılmadan",
-          overflowMenuPlaybackSpeed: "Oynatma hızı",
-          overflowMenuSubtitles: "Altyazı",
-          overflowMenuQuality: "Kalite",
-          overflowMenuAudioTracks: "Ses",
-          qualityAuto: "Otomatik");
+  factory PipFlutterPlayerTranslations.turkish() => PipFlutterPlayerTranslations(
+      languageCode: "tr",
+      generalDefaultError: "Video oynatılamıyor",
+      generalNone: "Hiçbiri",
+      generalDefault: "Varsayılan",
+      generalRetry: "Tekrar Dene",
+      playlistLoadingNextVideo: "Sonraki video yükleniyor",
+      controlsLive: "CANLI",
+      controlsNextVideoIn: "Sonraki video oynatılmadan",
+      overflowMenuPlaybackSpeed: "Oynatma hızı",
+      overflowMenuSubtitles: "Altyazı",
+      overflowMenuQuality: "Kalite",
+      overflowMenuAudioTracks: "Ses",
+      qualityAuto: "Otomatik");
 
-  factory PipFlutterPlayerTranslations.vietnamese() =>
-      PipFlutterPlayerTranslations(
+  factory PipFlutterPlayerTranslations.vietnamese() => PipFlutterPlayerTranslations(
         languageCode: "vi",
         generalDefaultError: "Video không thể phát bây giờ",
         generalNone: "Không có",
@@ -126,8 +123,7 @@ class PipFlutterPlayerTranslations {
         qualityAuto: "Tự động",
       );
 
-  factory PipFlutterPlayerTranslations.spanish() =>
-      PipFlutterPlayerTranslations(
+  factory PipFlutterPlayerTranslations.spanish() => PipFlutterPlayerTranslations(
         languageCode: "es",
         generalDefaultError: "No se puede reproducir el video",
         generalNone: "Ninguno",

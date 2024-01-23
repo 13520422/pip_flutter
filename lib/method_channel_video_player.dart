@@ -330,7 +330,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       }
       final String? eventType = map["event"] as String?;
       final String? key = map["key"] as String?;
-      print("videoEventsFor  $map");
+      // print("videoEventsFor  $map");
       switch (eventType) {
         case 'initialized':
           double width = 0;

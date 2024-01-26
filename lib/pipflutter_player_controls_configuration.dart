@@ -200,7 +200,7 @@ class PipFlutterPlayerControlsConfiguration {
     this.enableSubtitles = true,
     this.enableQualities = true,
     this.enablePip = true,
-    this.enableRetry = true,
+    this.enableRetry = false,
     this.overflowMenuCustomItems = const [],
     this.overflowMenuIcon = Icons.more_vert_outlined,
     this.pipMenuIcon = Icons.picture_in_picture_outlined,

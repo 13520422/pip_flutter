@@ -144,11 +144,11 @@ class _PipFlutterPlayerMaterialControlsState extends PipFlutterPlayerControlsSta
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.warning,
-              color: _controlsConfiguration.iconsColor,
-              size: 42,
-            ),
+            // Icon(
+            //   Icons.warning,
+            //   color: _controlsConfiguration.iconsColor,
+            //   size: 42,
+            // ),
             Text(
               _pipFlutterPlayerController!.translations.generalDefaultError,
               style: textStyle,

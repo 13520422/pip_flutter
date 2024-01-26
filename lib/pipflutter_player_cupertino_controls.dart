@@ -64,7 +64,7 @@ class _PipFlutterPlayerCupertinoControlsState extends PipFlutterPlayerControlsSt
 
     if (_latestValue?.hasError == true) {
       return Container(
-        color: Colors.black,
+        color: Colors.transparent,
         child: _buildErrorWidget(),
       );
     }
@@ -687,11 +687,11 @@ class _PipFlutterPlayerCupertinoControlsState extends PipFlutterPlayerControlsSt
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              CupertinoIcons.exclamationmark_triangle,
-              color: _controlsConfiguration.iconsColor,
-              size: 42,
-            ),
+            // Icon(
+            //   CupertinoIcons.exclamationmark_triangle,
+            //   color: _controlsConfiguration.iconsColor,
+            //   size: 42,
+            // ),
             Text(
               _pipFlutterPlayerController!.translations.generalDefaultError,
               style: textStyle,

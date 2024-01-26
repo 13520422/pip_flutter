@@ -653,6 +653,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 }
 
 - (UIViewController *)viewController{
+//    return [UIApplication sharedApplication].keyWindow.rootViewController;
   return [self topViewController:[UIApplication sharedApplication].keyWindow.rootViewController];
 }
 
@@ -676,11 +677,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     pictureInPictureAutomatic=isAuto;
     if(_pipController != NULL){
         if (@available(iOS 14.2, *)) {
-            _pipController.canStartPictureInPictureAutomaticallyFromInline = pictureInPictureAutomatic;
-            if (__playerLayer){
-                [self._playerLayer removeFromSuperlayer];
-                self._playerLayer = NULL;
-            }
+            _pipController.canStartPictureInPictureAutomaticallyFromInline = isAuto;
         } else {
             // Fallback on earlier versions
         }

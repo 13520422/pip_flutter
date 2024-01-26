@@ -40,6 +40,7 @@ class VideoData {
   bool? isBuffering;
   bool? isBufferUpdate;
   bool? isBufferEnd;
+  Size? size;
 }
 
 class VideoPlayer extends StatefulWidget {
@@ -267,6 +268,7 @@ class _VideoPlayerState extends State<VideoPlayer> with WidgetsBindingObserver {
       videoData.isBuffering = data.isBuffering;
       videoData.isBufferUpdate = data.isBufferUpdate;
       videoData.isBufferEnd = data.isBufferEnd;
+      videoData.size = data.size;
       if (data.initialized) {
         videoData.status = VideoStatus.INITIALZED;
       }

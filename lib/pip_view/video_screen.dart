@@ -217,15 +217,17 @@ class _VideoPlayerState extends State<VideoPlayer> with WidgetsBindingObserver {
   }
 
   refresh() {
-    controller?.videoPlayerController?.refresh();
-    if (widget.isLiveStream) {
-      controller?.seekTo(Duration(seconds: controller?.videoPlayerController?.value.duration?.inSeconds ?? 0));
+    if (_appLifecycleState == AppLifecycleState.resumed) {
+      controller?.videoPlayerController?.refresh();
+      if (widget.isLiveStream) {
+        controller?.seekTo(Duration(seconds: controller?.videoPlayerController?.value.duration?.inSeconds ?? 0));
+      }
     }
   }
 
   autoPlay() {
     try {
-      if (widget.isAutoPlay) {
+      if (widget.isAutoPlay && _appLifecycleState == AppLifecycleState.resumed) {
         if (controller?.videoPlayerController?.value.isPlaying != true) {
           controller?.play();
         }

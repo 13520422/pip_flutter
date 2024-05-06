@@ -775,7 +775,7 @@ CGColorRef CreateTransparentCGColor(CGFloat red, CGFloat green, CGFloat blue, CG
 - (void)pictureInPictureControllerWillStopPictureInPicture:(AVPictureInPictureController *)pictureInPictureController  API_AVAILABLE(ios(9.0)){
     
     if (_eventSink != nil) {
-        _eventSink(@{@"event" : @"pipStop1"});
+        _eventSink(@{@"event" : @"pipStop"});
     }
 }
 
